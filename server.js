@@ -66,10 +66,26 @@ const HERRAMIENTA_MOTOR = {
 };
 
 const model = genAI.getGenerativeModel({
-  model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
   systemInstruction: SYSTEM_PROMPT,
   tools: [HERRAMIENTA_MOTOR]
 });
+
+async function generateWithRetry(contents, retries = 3, delayMs = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await model.generateContent({ contents });
+    } catch (err) {
+      const isRetryable = err.message?.includes('503') || err.message?.includes('529') || err.message?.includes('overloaded');
+      if (isRetryable && i < retries - 1) {
+        console.log(`[retry ${i + 1}] modelo ocupado, reintentando en ${delayMs}ms...`);
+        await new Promise(r => setTimeout(r, delayMs));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
 
 // Sesiones en memoria: sessionId → { messages: [], lastAccess: timestamp }
 const sessions = new Map();
@@ -105,7 +121,7 @@ app.post('/chat', async (req, res) => {
   session.messages.push({ role: 'user', parts: [{ text: message }] });
 
   try {
-    let result = await model.generateContent({ contents: session.messages });
+    let result = await generateWithRetry(session.messages);
     let response = result.response;
 
     // Agentic loop: ejecuta herramientas hasta obtener respuesta de texto
@@ -127,7 +143,7 @@ app.post('/chat', async (req, res) => {
 
       session.messages.push({ role: 'user', parts: funcionResults });
 
-      result = await model.generateContent({ contents: session.messages });
+      result = await generateWithRetry(session.messages);
       response = result.response;
     }
 
