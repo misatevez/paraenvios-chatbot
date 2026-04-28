@@ -155,7 +155,12 @@ app.post('/chat', async (req, res) => {
 
   } catch (err) {
     console.error('[error]', err.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    const isQuota = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Quota');
+    if (isQuota) {
+      res.status(429).json({ quota: true });
+    } else {
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 });
 

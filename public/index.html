@@ -475,7 +475,14 @@
       });
       const data = await res.json();
       hideTyping();
-      addMessage(data.reply || data.error || '...', 'bot');
+      if (data.quota) {
+        const msg = lang === 'pt'
+          ? '⚠️ O assistente atingiu o limite de requisições por hoje. Tente novamente amanhã ou entre em contato com o suporte.'
+          : '⚠️ El asistente alcanzó el límite de consultas por hoy. Intenta de nuevo mañana o contacta al soporte.';
+        addMessage(msg, 'bot');
+      } else {
+        addMessage(data.reply || data.error || '...', 'bot');
+      }
     } catch {
       hideTyping();
       addMessage(lang === 'pt' ? 'Erro de conexão.' : 'Error de conexión.', 'bot');
@@ -501,7 +508,14 @@
       });
       const data = await res.json();
       hideTyping();
-      addMessage(data.reply || data.error || '...', 'bot');
+      if (data.quota) {
+        const msg = lang === 'pt'
+          ? '⚠️ O assistente atingiu o limite de requisições por hoje. Tente novamente amanhã ou entre em contato com o suporte.'
+          : '⚠️ El asistente alcanzó el límite de consultas por hoy. Intenta de nuevo mañana o contacta al soporte.';
+        addMessage(msg, 'bot');
+      } else {
+        addMessage(data.reply || data.error || '...', 'bot');
+      }
     } catch {
       hideTyping();
       addMessage(lang === 'pt' ? 'Erro de conexão.' : 'Error de conexión.', 'bot');
