@@ -390,11 +390,8 @@
   const suggestionsEl = document.getElementById('suggestions');
   const langPickerEl  = document.getElementById('lang-picker');
 
-  let sessionId = localStorage.getItem('paraenvios_sid');
-  if (!sessionId) {
-    sessionId = crypto.randomUUID();
-    localStorage.setItem('paraenvios_sid', sessionId);
-  }
+  const sessionId = crypto.randomUUID();
+  localStorage.removeItem('paraenvios_sid');
 
   let lang = 'es';
 
