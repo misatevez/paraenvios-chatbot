@@ -112,12 +112,19 @@ app.post('/chat', async (req, res) => {
       const assistantMsg = response.choices[0].message;
       session.messages.push(assistantMsg);
 
+      let mensajeDirecto = null;
+
       const toolResults = await Promise.all(
         assistantMsg.tool_calls.map(async call => {
           const args = JSON.parse(call.function.arguments);
           console.log(`[tool] calcular_flete →`, JSON.stringify(args));
           const resultado = await llamarMotor(args);
           console.log(`[tool] resultado →`, JSON.stringify(resultado));
+
+          if (resultado.mensaje_formateado) {
+            mensajeDirecto = resultado.mensaje_formateado;
+          }
+
           return {
             role: 'tool',
             tool_call_id: call.id,
@@ -127,6 +134,12 @@ app.post('/chat', async (req, res) => {
       );
 
       session.messages.push(...toolResults);
+
+      // Motor calculó OK → devolver resultado directo, sin que el LLM lo razone
+      if (mensajeDirecto) {
+        session.messages.push({ role: 'assistant', content: mensajeDirecto });
+        return res.json({ reply: mensajeDirecto });
+      }
 
       response = await openai.chat.completions.create({
         model: MODEL,
