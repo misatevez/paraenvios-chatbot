@@ -10,7 +10,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 
-const MOTOR_URL = 'https://script.google.com/macros/s/AKfycbzddmhpCS7TYDVS9Vso9NZL6YAKH7hZoYBAHCLMwNwFrC_nCFGEYaPStLMoop8iv-8RhA/exec';
+const MOTOR_URL = 'https://script.google.com/macros/s/AKfycbyba859-5_Q1sUBeK7MYNYzUY4QikrKzE7lYU0gQtdi6bye37f1xAMO4E355xgLobpVhA/exec';
 const MODEL    = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 const SYSTEM_PROMPT = `Eres el asistente de cotizaciones de Praia Envíos, empresa especializada en envíos Brasil → Venezuela.
