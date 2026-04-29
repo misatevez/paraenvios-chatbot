@@ -13,30 +13,32 @@ app.use(express.static(join(__dirname, 'public')));
 const MOTOR_URL = 'https://script.google.com/macros/s/AKfycbzTqb5It7FlqLOIlUut1CXJPEMTTzUDFqGduOtNSOxQXtcwr0SuBrr99991JA6jQR3Ypw/exec';
 const MODEL    = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-const SYSTEM_PROMPT = `Eres el asistente de cotizaciones de ParaEnvios, empresa especializada en envíos Brasil → Venezuela.
+const SYSTEM_PROMPT = `Eres el asistente de cotizaciones de Praia Envíos, empresa especializada en envíos Brasil → Venezuela.
 Eres bilíngüe: atiendes en español y en portugués según lo que elija el usuario.
 
 IDIOMA: El usuario ya eligió su idioma al inicio de la conversación. Detecta cuál fue y úsalo en TODAS tus respuestas sin excepción. No mezcles idiomas.
 
 Para calcular una cotización necesitas recolectar exactamente estos datos:
 
-1. Modalidad de envío (explica las opciones si el usuario no sabe):
-   - "express": LATAM Cargo — aéreo, tránsito ~30 días (la más usada)
-   - "aereo_pac": Correios PAC — aéreo económico, ~25 días
-   - "aereo_sedex": Correios SEDEX — aéreo rápido, ~16 días
-   - "peligroso": terrestre — solo para mercancía peligrosa, ~30 días
+1. Peso bruto en kg (sin redondear)
 
 2. Dimensiones de la caja en centímetros: largo, ancho, alto
 
-3. Peso bruto en kg
+3. Valor de la mercancía en Reales brasileños (R$)
 
-4. Valor de los productos en Reales brasileños (R$)
+4. Tipo de mercancía:
+   - "personal": artículos de uso personal (ropa, calzado, etc.)
+   - "comercial": productos para reventa o uso empresarial
 
-5. Ciudad destino en Venezuela (Caracas, Maracaibo, Valencia, etc.)
+5. Categorías de los productos (ej: ropa, electrónicos, medicamentos, perfumes, etc.)
+   — pregunta siempre, afecta la modalidad disponible
 
-6. ¿Está en Curitiba? — pregunta si la mercancía sale DESDE Curitiba o desde otra ciudad.
-   Si es desde FUERA de Curitiba → tiene_trecho = true
-   Si es desde Curitiba → tiene_trecho = false
+6. Ciudad de origen en Brasil (ej: Curitiba, São Paulo, etc.)
+   — determina si hay un costo de trecho adicional
+
+7. ¿Se solicita servicio de pickup (recolección a domicilio)?
+
+NOTA SOBRE MODALIDAD: NO le pidas al usuario que elija modalidad. El sistema la calcula automáticamente según los datos. El Express aplica solo a envíos personales ≤10 kg, dimensiones ≤50 cm cada lado, valor ≤R$2000, y sin categorías restringidas (alcohol, perfumes, grasa, corrosivos, baterías, medicamentos).
 
 Instrucciones:
 - Recolecta los datos de forma natural, no como un formulario.
@@ -49,21 +51,21 @@ const HERRAMIENTA_MOTOR = {
   type: 'function',
   function: {
     name: 'calcular_flete',
-    description: 'Calcula el costo de flete Brasil → Venezuela. Llámala cuando tengas todos los datos del usuario.',
+    description: 'Calcula la cotización de envío Brasil → Venezuela. Llámala cuando tengas todos los datos del usuario. La modalidad se determina automáticamente.',
     parameters: {
       type: 'object',
       properties: {
-        modalidad:            { type: 'string', enum: ['express', 'peligroso', 'aereo_pac', 'aereo_sedex'] },
-        largo_cm:             { type: 'number' },
-        ancho_cm:             { type: 'number' },
-        alto_cm:              { type: 'number' },
-        peso_bruto_kg:        { type: 'number' },
-        valor_productos_brl:  { type: 'number' },
-        ciudad_destino:       { type: 'string' },
-        tiene_trecho:         { type: 'boolean' },
-        taxa_adicional:       { type: 'number' }
+        peso_bruto:        { type: 'number', description: 'Peso bruto en kg, sin redondear' },
+        largo:             { type: 'number', description: 'Largo de la caja en cm' },
+        ancho:             { type: 'number', description: 'Ancho de la caja en cm' },
+        alto:              { type: 'number', description: 'Alto de la caja en cm' },
+        valor_mercancia:   { type: 'number', description: 'Valor de la mercancía en R$' },
+        tipo_mercancia:    { type: 'string', enum: ['personal', 'comercial'], description: '"personal" o "comercial"' },
+        categorias:        { type: 'array', items: { type: 'string' }, description: 'Lista de categorías de los productos' },
+        ciudad_origen:     { type: 'string', description: 'Ciudad de origen en Brasil' },
+        pickup_solicitado: { type: 'boolean', description: 'true si el cliente solicita recolección a domicilio' }
       },
-      required: ['modalidad', 'largo_cm', 'ancho_cm', 'alto_cm', 'peso_bruto_kg', 'valor_productos_brl', 'ciudad_destino', 'tiene_trecho']
+      required: ['peso_bruto', 'largo', 'ancho', 'alto', 'valor_mercancia', 'tipo_mercancia', 'categorias', 'ciudad_origen', 'pickup_solicitado']
     }
   }
 };
