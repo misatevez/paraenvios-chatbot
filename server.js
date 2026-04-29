@@ -1,16 +1,17 @@
 import express from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 
 const MOTOR_URL = 'https://script.google.com/macros/s/AKfycbzTqb5It7FlqLOIlUut1CXJPEMTTzUDFqGduOtNSOxQXtcwr0SuBrr99991JA6jQR3Ypw/exec';
+const MODEL    = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 const SYSTEM_PROMPT = `Eres el asistente de cotizaciones de ParaEnvios, empresa especializada en envíos Brasil → Venezuela.
 Eres bilíngüe: atiendes en español y en portugués según lo que elija el usuario.
@@ -45,50 +46,29 @@ Instrucciones:
 - Si hay error en el cálculo, explícalo y pide los datos correctos.`;
 
 const HERRAMIENTA_MOTOR = {
-  functionDeclarations: [{
+  type: 'function',
+  function: {
     name: 'calcular_flete',
     description: 'Calcula el costo de flete Brasil → Venezuela. Llámala cuando tengas todos los datos del usuario.',
     parameters: {
-      type: 'OBJECT',
+      type: 'object',
       properties: {
-        modalidad:            { type: 'STRING', description: 'Modalidad: express | peligroso | aereo_pac | aereo_sedex' },
-        largo_cm:             { type: 'NUMBER', description: 'Largo de la caja en cm' },
-        ancho_cm:             { type: 'NUMBER', description: 'Ancho de la caja en cm' },
-        alto_cm:              { type: 'NUMBER', description: 'Alto de la caja en cm' },
-        peso_bruto_kg:        { type: 'NUMBER', description: 'Peso bruto en kg' },
-        valor_productos_brl:  { type: 'NUMBER', description: 'Valor de los productos en R$' },
-        ciudad_destino:       { type: 'STRING', description: 'Ciudad destino en Venezuela' },
-        tiene_trecho:         { type: 'BOOLEAN', description: 'true si la mercancía sale fuera de Curitiba' },
-        taxa_adicional:       { type: 'NUMBER', description: 'Cargos adicionales en R$ (default 0)' },
+        modalidad:            { type: 'string', enum: ['express', 'peligroso', 'aereo_pac', 'aereo_sedex'] },
+        largo_cm:             { type: 'number' },
+        ancho_cm:             { type: 'number' },
+        alto_cm:              { type: 'number' },
+        peso_bruto_kg:        { type: 'number' },
+        valor_productos_brl:  { type: 'number' },
+        ciudad_destino:       { type: 'string' },
+        tiene_trecho:         { type: 'boolean' },
+        taxa_adicional:       { type: 'number' }
       },
       required: ['modalidad', 'largo_cm', 'ancho_cm', 'alto_cm', 'peso_bruto_kg', 'valor_productos_brl', 'ciudad_destino', 'tiene_trecho']
     }
-  }]
+  }
 };
 
-const model = genAI.getGenerativeModel({
-  model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
-  systemInstruction: SYSTEM_PROMPT,
-  tools: [HERRAMIENTA_MOTOR]
-});
-
-async function generateWithRetry(contents, retries = 3, delayMs = 3000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await model.generateContent({ contents });
-    } catch (err) {
-      const isRetryable = err.message?.includes('503') || err.message?.includes('529') || err.message?.includes('overloaded');
-      if (isRetryable && i < retries - 1) {
-        console.log(`[retry ${i + 1}] modelo ocupado, reintentando en ${delayMs}ms...`);
-        await new Promise(r => setTimeout(r, delayMs));
-      } else {
-        throw err;
-      }
-    }
-  }
-}
-
-// Sesiones en memoria: sessionId → { messages: [], lastAccess: timestamp }
+// Sesiones en memoria
 const sessions = new Map();
 
 setInterval(() => {
@@ -117,45 +97,51 @@ app.post('/chat', async (req, res) => {
   }
   const session = sessions.get(sessionId);
   session.lastAccess = Date.now();
-
-  // Agrega el mensaje del usuario al historial
-  session.messages.push({ role: 'user', parts: [{ text: message }] });
+  session.messages.push({ role: 'user', content: message });
 
   try {
-    let result = await generateWithRetry(session.messages);
-    let response = result.response;
+    let response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...session.messages],
+      tools: [HERRAMIENTA_MOTOR]
+    });
 
-    // Agentic loop: ejecuta herramientas hasta obtener respuesta de texto
-    while (response.functionCalls()?.length > 0) {
-      const calls = response.functionCalls();
+    // Agentic loop
+    while (response.choices[0].finish_reason === 'tool_calls') {
+      const assistantMsg = response.choices[0].message;
+      session.messages.push(assistantMsg);
 
-      // Guarda la respuesta del modelo (con function calls) en el historial
-      session.messages.push({ role: 'model', parts: calls.map(c => ({ functionCall: c })) });
-
-      // Ejecuta cada tool call y recoge los resultados
-      const funcionResults = await Promise.all(
-        calls.map(async call => {
-          console.log(`[tool] ${call.name} →`, JSON.stringify(call.args));
-          const resultado = await llamarMotor(call.args);
+      const toolResults = await Promise.all(
+        assistantMsg.tool_calls.map(async call => {
+          const args = JSON.parse(call.function.arguments);
+          console.log(`[tool] calcular_flete →`, JSON.stringify(args));
+          const resultado = await llamarMotor(args);
           console.log(`[tool] resultado →`, JSON.stringify(resultado));
-          return { functionResponse: { name: call.name, response: resultado } };
+          return {
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify(resultado)
+          };
         })
       );
 
-      session.messages.push({ role: 'user', parts: funcionResults });
+      session.messages.push(...toolResults);
 
-      result = await generateWithRetry(session.messages);
-      response = result.response;
+      response = await openai.chat.completions.create({
+        model: MODEL,
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...session.messages],
+        tools: [HERRAMIENTA_MOTOR]
+      });
     }
 
-    const texto = response.text();
-    session.messages.push({ role: 'model', parts: [{ text: texto }] });
+    const texto = response.choices[0].message.content;
+    session.messages.push({ role: 'assistant', content: texto });
 
     res.json({ reply: texto });
 
   } catch (err) {
     console.error('[error]', err.message);
-    const isQuota = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Quota');
+    const isQuota = err.status === 429 || err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Rate limit');
     if (isQuota) {
       res.status(429).json({ quota: true });
     } else {
