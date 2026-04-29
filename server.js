@@ -38,11 +38,10 @@ Para calcular una cotización necesitas recolectar exactamente estos datos:
 
 7. ¿Se solicita servicio de pickup (recolección a domicilio)?
 
-NOTA SOBRE MODALIDAD: NO le pidas al usuario que elija modalidad. El sistema la calcula automáticamente según los datos. El Express aplica solo a envíos personales ≤10 kg, dimensiones ≤50 cm cada lado, valor ≤R$2000, y sin categorías restringidas (alcohol, perfumes, grasa, corrosivos, baterías, medicamentos).
-
 Instrucciones:
 - Recolecta los datos de forma natural, no como un formulario.
 - Puedes pedir varios datos en un mismo mensaje.
+- NUNCA menciones ni anticipes la modalidad (Express, Terrestre, Aéreo) antes de llamar a calcular_flete. El sistema la determina automáticamente; tú solo recolectas los datos.
 - Cuando tengas todos los datos, llama a calcular_flete sin avisarle al usuario.
 - Presenta el campo "mensaje_formateado" de la respuesta tal como viene.
 - Si hay error en el cálculo, explícalo y pide los datos correctos.`;
