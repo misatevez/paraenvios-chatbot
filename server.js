@@ -30,12 +30,17 @@ Tu trabajo termina cuando llamas a calcular_flete.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DATOS A RECOLECTAR (todos obligatorios)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Peso bruto en kg (sin redondear)
-2. Dimensiones de la caja en cm: largo, ancho, alto
-3. Valor de la mercancía en R$
-4. Tipo de mercancía: "personal" o "comercial"
-5. Categorías del producto (ropa, perfume, electrónicos, etc.)
-6. Ciudad de origen en Brasil
+Por cada caja:
+  - Peso bruto en kg (sin redondear)
+  - Dimensiones en cm: largo, ancho, alto
+  - Valor de la mercancía en R$
+
+Datos comunes del envío:
+  - Tipo de mercancía: "personal" o "comercial"
+  - Categorías del producto (ropa, perfume, electrónicos, etc.)
+  - Ciudad de origen en Brasil
+
+Si hay varias cajas, numerálas (Caja 1, Caja 2…) y recolectá los datos de cada una.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REGLAS ESTRICTAS DE COMPORTAMIENTO
@@ -49,7 +54,7 @@ REGLAS ESTRICTAS DE COMPORTAMIENTO
 - NUNCA anticipes restricciones, advertencias ni explicaciones sobre
   perfumes, baterías, alcohol, ni ninguna categoría. No es tu decisión.
 - NUNCA pidas confirmación de datos que el usuario ya dio claramente.
-- Cuando tengas los 6 datos, llamá a calcular_flete inmediatamente y
+- Cuando tengas todos los datos de todas las cajas, llamá a calcular_flete inmediatamente y
   en silencio, sin avisarle al usuario.
 - Mostrá el campo "mensaje_formateado" de la respuesta exactamente como viene.
 - Si el motor devuelve error, explicalo y pedí los datos correctos.`;
@@ -62,16 +67,26 @@ const HERRAMIENTA_MOTOR = {
     parameters: {
       type: 'object',
       properties: {
-        peso_bruto:        { type: 'number', description: 'Peso bruto en kg, sin redondear' },
-        largo:             { type: 'number', description: 'Largo de la caja en cm' },
-        ancho:             { type: 'number', description: 'Ancho de la caja en cm' },
-        alto:              { type: 'number', description: 'Alto de la caja en cm' },
-        valor_mercancia:   { type: 'number', description: 'Valor de la mercancía en R$' },
+        boxes: {
+          type: 'array',
+          description: 'Lista de cajas del envío (una o más)',
+          items: {
+            type: 'object',
+            properties: {
+              peso_bruto:      { type: 'number', description: 'Peso bruto en kg, sin redondear' },
+              largo:           { type: 'number', description: 'Largo en cm' },
+              ancho:           { type: 'number', description: 'Ancho en cm' },
+              alto:            { type: 'number', description: 'Alto en cm' },
+              valor_mercancia: { type: 'number', description: 'Valor de la mercancía de esta caja en R$' }
+            },
+            required: ['peso_bruto', 'largo', 'ancho', 'alto', 'valor_mercancia']
+          }
+        },
         tipo_mercancia:    { type: 'string', enum: ['personal', 'comercial'], description: '"personal" o "comercial"' },
         categorias:        { type: 'array', items: { type: 'string' }, description: 'Lista de categorías de los productos' },
         ciudad_origen:     { type: 'string', description: 'Ciudad de origen en Brasil' }
       },
-      required: ['peso_bruto', 'largo', 'ancho', 'alto', 'valor_mercancia', 'tipo_mercancia', 'categorias', 'ciudad_origen']
+      required: ['boxes', 'tipo_mercancia', 'categorias', 'ciudad_origen']
     }
   }
 };
