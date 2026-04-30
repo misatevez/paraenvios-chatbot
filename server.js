@@ -10,7 +10,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 
-const MOTOR_URL = 'https://script.google.com/macros/s/AKfycbyba859-5_Q1sUBeK7MYNYzUY4QikrKzE7lYU0gQtdi6bye37f1xAMO4E355xgLobpVhA/exec';
+const MOTOR_URL = 'https://script.google.com/macros/s/AKfycbxNaYIoNC8WUoQ5P0RucLBabdDBP26gqhXzmwwfrzaRRlNwYsLm3FYQeaLqrKYzKK8WaQ/exec';
 const MODEL    = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 const SYSTEM_PROMPT = `Eres el asistente de cotizaciones de Praia Envíos, empresa especializada
@@ -36,7 +36,6 @@ DATOS A RECOLECTAR (todos obligatorios)
 4. Tipo de mercancía: "personal" o "comercial"
 5. Categorías del producto (ropa, perfume, electrónicos, etc.)
 6. Ciudad de origen en Brasil
-7. ¿Solicita pickup (recolección a domicilio)? → true o false
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REGLAS ESTRICTAS DE COMPORTAMIENTO
@@ -50,7 +49,7 @@ REGLAS ESTRICTAS DE COMPORTAMIENTO
 - NUNCA anticipes restricciones, advertencias ni explicaciones sobre
   perfumes, baterías, alcohol, ni ninguna categoría. No es tu decisión.
 - NUNCA pidas confirmación de datos que el usuario ya dio claramente.
-- Cuando tengas los 7 datos, llamá a calcular_flete inmediatamente y
+- Cuando tengas los 6 datos, llamá a calcular_flete inmediatamente y
   en silencio, sin avisarle al usuario.
 - Mostrá el campo "mensaje_formateado" de la respuesta exactamente como viene.
 - Si el motor devuelve error, explicalo y pedí los datos correctos.`;
@@ -70,10 +69,9 @@ const HERRAMIENTA_MOTOR = {
         valor_mercancia:   { type: 'number', description: 'Valor de la mercancía en R$' },
         tipo_mercancia:    { type: 'string', enum: ['personal', 'comercial'], description: '"personal" o "comercial"' },
         categorias:        { type: 'array', items: { type: 'string' }, description: 'Lista de categorías de los productos' },
-        ciudad_origen:     { type: 'string', description: 'Ciudad de origen en Brasil' },
-        pickup_solicitado: { type: 'boolean', description: 'true si el cliente solicita recolección a domicilio' }
+        ciudad_origen:     { type: 'string', description: 'Ciudad de origen en Brasil' }
       },
-      required: ['peso_bruto', 'largo', 'ancho', 'alto', 'valor_mercancia', 'tipo_mercancia', 'categorias', 'ciudad_origen', 'pickup_solicitado']
+      required: ['peso_bruto', 'largo', 'ancho', 'alto', 'valor_mercancia', 'tipo_mercancia', 'categorias', 'ciudad_origen']
     }
   }
 };
