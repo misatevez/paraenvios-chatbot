@@ -181,7 +181,7 @@ app.post('/chat', async (req, res) => {
     if (isQuota) {
       res.status(429).json({ quota: true });
     } else {
-      res.status(500).json({ error: 'Error interno del servidor', debug: err.message });
+      res.status(500).json({ error: 'Error interno del servidor', debug: String(err.message || err) });
     }
   }
 });
