@@ -10,7 +10,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 
-const MOTOR_URL = process.env.MOTOR_URL || 'https://script.google.com/macros/s/AKfycbyAsz3N5PcJEMEZIyGyqnznF7uP_NcQi61FXh5ndygMbkA1A39lxXe-v_hHcZ8pLLF6/exec';
+const MOTOR_URL = 'https://script.google.com/macros/s/AKfycbw-Rlaum9liDV45GDkPNcetAGxhJnFzDGzR0Q8uhINeh_VxFXoU9dawKjpd3QEHb34vlw/exec';
 const MODEL    = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 const SYSTEM_PROMPT = `Eres el asistente de cotizaciones de Praia Envíos, empresa especializada
