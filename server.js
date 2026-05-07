@@ -264,7 +264,7 @@ app.post('/chat', async (req, res) => {
   }
 });
 
-app.get('/health', (_, res) => res.json({ status: 'ok' }));
+app.get('/health', (_, res) => res.json({ status: 'ok', version: 'v2-bienvenida' }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Chatbot en http://localhost:${PORT}`));
