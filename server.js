@@ -135,14 +135,68 @@ async function llamarMotor(args) {
   return res.json();
 }
 
+const BIENVENIDA_ES = `¡Hola! Soy el cotizador de Praia Envíos 🇧🇷➡️🇻🇪
+
+Para darte la cotización necesito los siguientes datos:
+
+📦 *Por cada caja:*
+• Peso bruto en kg
+• Dimensiones en cm (largo × ancho × alto)
+• Valor de la mercancía en R$
+
+📋 *Del envío:*
+• Tipo: personal o comercial
+• Producto (ej: ropa, calzado, electrónicos, perfume...)
+• Ciudad de origen en Brasil
+
+Podés enviarlo todo en un solo mensaje, así:
+_20 kg | 40×50×45 cm | R$4.500 | personal | ropa | São Paulo_
+
+Si tenés varias cajas, enumerálas: Caja 1, Caja 2...`;
+
+const BIENVENIDA_PT = `Olá! Sou o cotador da Praia Envios 🇧🇷➡️🇻🇪
+
+Para te dar a cotação preciso dos seguintes dados:
+
+📦 *Por caixa:*
+• Peso bruto em kg
+• Dimensões em cm (comprimento × largura × altura)
+• Valor da mercadoria em R$
+
+📋 *Do envio:*
+• Tipo: pessoal ou comercial
+• Produto (ex: roupa, calçado, eletrônicos, perfume...)
+• Cidade de origem no Brasil
+
+Pode enviar tudo em uma única mensagem, assim:
+_20 kg | 40×50×45 cm | R$4.500 | pessoal | roupa | São Paulo_
+
+Se tiver várias caixas, enumere-as: Caixa 1, Caixa 2...`;
+
+const SALUDOS = ['hola','ola','hi','hello','hey','bom dia','boa tarde','boa noite','buenos dias','buenas','buenas tardes','buenas noches','oi','oie'];
+
+function esSaludo(msg) {
+  return SALUDOS.includes(msg.toLowerCase().trim().replace(/[!¡.,]+/g,''));
+}
+
 app.post('/chat', async (req, res) => {
   const { sessionId, message } = req.body;
   if (!sessionId || !message) return res.status(400).json({ error: 'Faltan campos' });
 
-  if (!sessions.has(sessionId)) {
+  const esNueva = !sessions.has(sessionId);
+  if (esNueva) {
     sessions.set(sessionId, { messages: [], lastAccess: Date.now() });
   }
   const session = sessions.get(sessionId);
+
+  // Primer mensaje de la sesión: devolver bienvenida directo sin llamar a OpenAI
+  if (esNueva || (session.messages.length === 0 && esSaludo(message))) {
+    const idiomaPt = /^(oi|olá|ola|bom|boa|oie)/i.test(message.trim());
+    const bienvenida = idiomaPt ? BIENVENIDA_PT : BIENVENIDA_ES;
+    session.messages.push({ role: 'assistant', content: bienvenida });
+    session.lastAccess = Date.now();
+    return res.json({ reply: bienvenida });
+  }
   session.lastAccess = Date.now();
   session.messages.push({ role: 'user', content: message });
 
