@@ -264,6 +264,24 @@ app.post('/chat', async (req, res) => {
   }
 });
 
+// Endpoint para Whapify: recibe el JSON del motor extraído por el script [DATOS]
+app.post('/cotizar', async (req, res) => {
+  const { boxes, tipo_mercancia, categorias, ciudad_origen } = req.body;
+  if (!boxes || !tipo_mercancia || !categorias || !ciudad_origen) {
+    return res.status(400).json({ error: 'Faltan campos requeridos' });
+  }
+
+  try {
+    console.log(`[cotizar] →`, JSON.stringify(req.body));
+    const resultado = await llamarMotor(req.body);
+    console.log(`[cotizar] resultado →`, JSON.stringify(resultado));
+    res.json(resultado);
+  } catch (err) {
+    console.error('[cotizar error]', err.message);
+    res.status(500).json({ error: 'Error al contactar el motor' });
+  }
+});
+
 app.get('/health', (_, res) => res.json({ status: 'ok', version: 'v2-bienvenida' }));
 
 const PORT = process.env.PORT || 3000;
